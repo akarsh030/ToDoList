@@ -1,0 +1,548 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8"> {% load static %}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ToDo List</title>
+    <meta name="description" content="ToDo List">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans|Candal|Alegreya+Sans">
+    <!--<link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">-->
+    <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/font-awesome.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/imagehover.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+    <!--<script src="{% static 'js/jquery.min.js' %}"></script>-->
+    <script src="{% static 'js/jquery-3.2.1.min.js' %}"></script>
+    <script src="{% static 'js/jquery.tmpl.min.js' %}"></script>
+    <!--<script src="{% static 'js/jquery.easing.min.js' %}"></script>-->
+    <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script src="{% static 'js/custom.js' %}"></script>    
+    <script>
+        var glbl, usid
+        var itup
+        function list_disp() {
+            $.ajax({
+                type: "GET",
+                url: "/todo/lists/",
+                success: function (data) {
+                    if (data.length == 0) {
+                        $('#row-main').empty()
+                        $('#row-main').append('<div class="alert alert-info">No Lists to display.</div>')
+                        $('#header-section').empty()
+                        $('#header-section').append('<h2>ToDo Lists</h2><hr class="bottom-line"><button id="listnew" class="btn btn-success btn-sm"><i class="fa fa-list fa-fw"></i> New List</button>')
+                    }
+                    else {
+                        $.get('{% static "listsf.html" %}', function (htm) {
+                            $('#row-main').empty()
+                            $('#header-section').empty()
+                            $('#header-section').append('<h2>ToDo Lists</h2><hr class="bottom-line"><button id="listnew" class="btn btn-success btn-sm"><i class="fa fa-list fa-fw"></i> New List</button>')
+                            $.tmpl(htm, data).appendTo("#row-main")
+                        });
+                    }
+                },
+            });
+        }
+        function item_disp(key) {
+            $.ajax({
+                type: "GET",
+                url: "/todo/list/" + key + "/",
+                success: function (data) {
+                    if (data.length == 0) {
+                        $('#row-main').empty()
+                        $('#header-section').empty()
+                        $('#header-section').append('<h2>ToDo Items</h2><hr class="bottom-line"><button id="itemnew" class="btn btn-success btn-sm"><i class="fa fa-list fa-fw"></i> New Item</button>')
+                        $('#row-main').append('<div class="alert alert-info">No Items to display.</div>')
+                    }
+                    else {
+                        $.get('{% static "itemsf.html" %}', function (htm) {
+                            $('#row-main').empty()
+                            $('#header-section').empty()
+                            $('#header-section').append('<h2>ToDo Items</h2><hr class="bottom-line"><button id="itemnew" class="btn btn-success btn-sm"><i class="fa fa-list fa-fw"></i> New Item</button>')
+                            $.tmpl(htm, data).appendTo("#row-main")
+                        });
+                    }
+                },
+            });
+        }
+        function getCookie(cname) {
+            var name = cname + "=";
+            var ca = document.cookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return "";
+        }
+        function setCookie(cname, cvalue, exsec) {
+            var d = new Date();
+            d.setTime(d.getTime() + (exsec * 1000));
+            var expires = "expires=" + d.toUTCString();
+            document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+        }
+        function checkCookie() {
+            var username = getCookie("user");
+            if (username != "") {
+                username = username.split(',')
+                usid = username[1]
+                $("#myNavbar").empty()
+                $("#myNavbar").append('<ul class="nav navbar-nav navbar-right"><li><a href="#" id="userpr"><i class="fa fa-user-circle-o color-green" aria-hidden="true"></i> Welcome ' + username[0] + ' !</a></li><li><a href="#" id="logout"><i class="fa fa-sign-out color-green" aria-hidden="true"></i> Logout</a></li></ul>')
+                list_disp()
+                $(".text-dec").empty()
+                $(".text-dec").append("Welcome to ToDo")
+            }
+        }
+        $("document").ready(function () {
+            checkCookie();
+            $("body").on('submit', '#loginForm', function (e) {
+                e.preventDefault()
+                var credentials = {}
+                credentials['email'] = $("#loginid").val()
+                credentials['password'] = $("#loginpsw").val()
+                $.ajax({
+                    type: "POST",
+                    url: "/accounts/auth-token/",
+                    data: JSON.stringify(credentials),
+                    success: function (auth) {
+                        $.ajax({
+                            type: "GET",
+                            url: "/accounts/restricted/",
+                            beforeSend: function (xhr) {
+                                xhr.setRequestHeader("Authorization", "JWT " + auth.token);
+                            },
+                            success: function (data) {
+                                usid = data.id
+                                setCookie("user", data.username + ',' + data.id, 300)
+                                $('#login').modal('toggle')
+                                $("#myNavbar").empty()
+                                $("#myNavbar").append('<ul class="nav navbar-nav navbar-right"><li><a href="#" id="userpr"><i class="fa fa-user-circle-o color-green" aria-hidden="true"></i> Welcome ' + data.username + ' !</a></li><li><a href="#" id="logout"><i class="fa fa-sign-out color-green" aria-hidden="true"></i> Logout</a></li></ul>')
+                                list_disp()
+                                $(".text-dec").empty()
+                                $(".text-dec").append("Welcome to ToDo")
+                            },
+                        });
+                    },
+                    error: function (jqXHR) {
+                        $("#log-body").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> Wrong Credentials.</div>')
+                    },
+                    dataType: "json",
+                    contentType: "application/json",
+                });
+            });
+            $("body").on('submit', '#registerForm', function (e) {
+                e.preventDefault()
+                var credentials = {}
+                credentials['email'] = $("#emailid").val()
+                credentials['username'] = $("#username").val()
+                credentials['firstname'] = $("#firstname").val()
+                credentials['lastname'] = $("#lastname").val()
+                credentials['password'] = $("#password").val()
+                credentials['confirm_password'] = $("#logincfmpsw").val()
+                $.ajax({
+                    type: "POST",
+                    url: "/accounts/register/",
+                    data: JSON.stringify(credentials),
+                    success: function (auth) {
+                        $('#register').modal('toggle')
+                        $(".errlogn").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Congratulations!</strong> You have successfully Registered.</div>')
+                    },
+                    error: function (errors) {
+                        $("#reg-body").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> Already exists.</div>')
+                    },
+                    dataType: "json",
+                    contentType: "application/json",
+                });
+            });
+            $("body").on("click", "a[id='home']", function (e) {
+                e.preventDefault()
+                var username = getCookie("user");
+                if (username != "") {
+                    list_disp()
+                }
+            });
+            $("body").on("click", "a[id='userpr']", function (e) {
+                e.preventDefault()
+                console.log(usid)
+                $.ajax({
+                    type: "GET",
+                    url: "/accounts/profile/" + usid + "/",
+                    success: function (data) {
+                        $.get('{% static "userprof.html" %}', function (htm) {
+                            $('#header-section').empty()
+                            $('#header-section').append('<h2>Update Profile</h2><hr class="bottom-line">')
+                            $("#row-main").empty()
+                            $.tmpl(htm, data).prependTo("#row-main")
+                        });
+                    },
+                });
+            });
+            $("#work-shop").on("submit", ".userprof", function (e) {
+                e.preventDefault()
+                var credentials = {}
+                credentials['email'] = $("#emailidu").val()
+                credentials['username'] = $("#usernameu").val()
+                credentials['firstname'] = $("#firstnameu").val()
+                credentials['lastname'] = $("#lastnameu").val()
+                credentials['password'] = $("#passwordu").val()
+                credentials['confirm_password'] = $("#logincfmpswu").val()
+                $.ajax({
+                    type: "PUT",
+                    url: "/accounts/profile/" + usid + "/",
+                    data: credentials,
+                    success: function (data) {
+                        list_disp()
+                        $("#row-main").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Success!</strong> Your Profile has been Successfully Updated.</div>')
+                    },
+                    error: function () {
+                        list_disp()
+                        $("#row-main").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> Your Profile cannot be Updated.</div>')
+                    }
+                });
+            });
+            $("body").on("click", "a[id='logout']", function () {
+                $.ajax({
+                    type: "GET",
+                    url: "/accounts/logout/",
+                    success: function (data) {
+                        $(location).attr('href', '/accounts/login/');
+                    },
+                });
+            });
+            $("#work-shop").on("click", "button[id='listnew']", function () {
+                $.get('{% static "listnewf.html" %}', function (htm) {
+                    $('#header-section').empty()
+                    $('#header-section').append('<h2>New ToDo List</h2><hr class="bottom-line">')
+                    $("#row-main").empty()
+                    $.tmpl(htm).prependTo("#row-main")
+                });
+            });
+            $("#work-shop").on("click", "button[id='itemnew']", function () {
+                $.get('{% static "itemnewf.html" %}', function (htm) {
+                    $('#header-section').empty()
+                    $('#header-section').append('<h2>Update ToDo Item</h2><hr class="bottom-line">')
+                    $("#row-main").empty()
+                    $.tmpl(htm).prependTo("#row-main")
+                });
+            });
+            $("#work-shop").on("submit", ".lisup", function (e) {
+                e.preventDefault()
+                var credentials = {}
+                credentials['name'] = $("#name").val()
+                $.ajax({
+                    type: "PUT",
+                    url: "/todo/listup/" + glbl[2] + "/",
+                    data: credentials,
+                    success: function (data) {
+                        list_disp()
+                        $("#row-main").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Success!</strong> The List has been Successfully Updated.</div>')
+                    },
+                    error: function () {
+                        list_disp()
+                        $("#row-main").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> This List cannot be Updated.</div>')
+                    }
+                });
+            });
+            $("#work-shop").on("submit", ".itmup", function (e) {
+                e.preventDefault()
+                var credentials = {}
+                credentials['descrip'] = $("#descrip").val()
+                credentials['due_by'] = $("#due_by").val()
+                credentials['list'] = itup
+                $.ajax({
+                    type: "PUT",
+                    url: "/todo/itemup/" + glbl[2] + "/",
+                    data: credentials,
+                    success: function (data) {
+                        item_disp(itup)
+                        $("#row-main").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Success!</strong> The Item has been Successfully Updated.</div>')
+                    },
+                    error: function () {
+                        item_disp(itup)
+                        $("#row-main").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> This Item cannot be Updated.</div>')
+                    }
+                });
+            });
+            $("#work-shop").on("submit", ".lisnw", function (e) {
+                e.preventDefault()
+                var credentials = {}
+                credentials['name'] = $("#name").val()
+                $.ajax({
+                    type: "POST",
+                    url: "/todo/newlist/",
+                    data: credentials,
+                    success: function (data) {
+                        list_disp()
+                    },
+                });
+            });
+            $("#work-shop").on("submit", ".itmnw", function (e) {
+                e.preventDefault()
+                var credentials = {}
+                credentials['descrip'] = $("#descrip").val()
+                credentials['due_by'] = $("#due_by").val()
+                $.ajax({
+                    type: "POST",
+                    url: "/todo/newitem/" + itup + "/",
+                    data: credentials,
+                    success: function (data) {
+                        item_disp(itup)
+                    },
+                });
+            });
+            $("#row-main").on("click", "button[name='btnn']", function (e) {
+                e.preventDefault()
+                var choice = $(this).attr('id');
+                var akar = choice.split('_');
+                glbl = akar
+                if (akar[0] == 'list') {
+                    itup = akar[2]
+                    if (akar[1] == 'show') {
+                        item_disp(akar[2])
+                    }
+                    else if (akar[1] == 'update') {
+                        $.ajax({
+                            type: "GET",
+                            url: "/todo/listup/" + akar[2] + "/",
+                            success: function (data) {
+                                $.get('{% static "listupf.html" %}', function (htm) {
+                                    $('#header-section').empty()
+                                    $('#header-section').append('<h2>Update ToDo List</h2><hr class="bottom-line">')
+                                    $("#row-main").empty()
+                                    $.tmpl(htm, data).prependTo("#row-main")
+                                });
+                            },
+                        });
+                    }
+                    else if (akar[1] == 'delete') {
+                        $.ajax({
+                            type: "DELETE",
+                            url: "/todo/listup/" + akar[2] + "/",
+                            success: function (data) {
+                                list_disp()
+                                $("#row-main").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Success!</strong> The List has been Successfully Removed.</div>')
+                            },
+                            error: function () {
+                                list_disp()
+                                $("#row-main").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> This List cannot be Removed.</div>')
+                            }
+                        });
+                    }
+                }
+                else if (akar[0] == 'item') {
+                    if (akar[1] == 'compltd') {
+                        $.ajax({
+                            type: "GET",
+                            url: "/todo/itemupd/" + akar[2] + "/",
+                            success: function (data) {
+                                item_disp(itup)
+                                $("#row-main").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Success!</strong> The Item has been Successfully Updated.</div>')
+                            },
+                            error: function () {
+                                item_disp(itup)
+                                $("#row-main").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> This Item cannot be Updated.</div>')
+                            }
+                        });
+                    }
+                    if (akar[1] == 'update') {
+                        $.ajax({
+                            type: "GET",
+                            url: "/todo/itemup/" + akar[2] + "/",
+                            success: function (data) {
+                                $.get('{% static "itemupf.html" %}', function (htm) {
+                                    $('#header-section').empty()
+                                    $('#header-section').append('<h2>Update ToDo Item</h2><hr class="bottom-line">')
+                                    $("#row-main").empty()
+                                    $.tmpl(htm, data).prependTo("#row-main")
+                                });
+                            },
+                        });
+                    }
+                    else if (akar[1] == 'delete') {
+                        $.ajax({
+                            type: "DELETE",
+                            url: "/todo/itemup/" + akar[2] + "/",
+                            success: function (data) {
+                                item_disp(itup)
+                                $("#row-main").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Success!</strong> The Item has been Successfully Removed.</div>')
+                            },
+                            error: function () {
+                                item_disp(itup)
+                                $("#row-main").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> This Item cannot be Removed.</div>')
+                            }
+                        });
+                    }
+                }
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <!--Navigation bar-->
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+                <a id="home" class="navbar-brand" href="indexf.html">ToDo <span>List</span></a>
+            </div>
+            <div class="collapse navbar-collapse" id="myNavbar">
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="#" data-target="#login" data-toggle="modal"><i class="fa fa-sign-in color-green" aria-hidden="true"></i> Sign in</a></li>
+                    <li><a href="#" data-target="#register" data-toggle="modal">Register</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <!--/ Navigation bar-->
+    <!--Modal box-->
+    <div class="modal fade" id="login" role="dialog">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title text-center form-title">Login</h4>
+                </div>
+                <div class="modal-body padtrbl">
+                    <div class="login-box-body" id="log-body">
+                        <p class="login-box-msg">Sign in to start your session</p>
+                        <div class="form-group">
+                            <form name="" id="loginForm">
+                                <div class="form-group has-feedback">
+                                    <!----- username -------------->
+                                    <input class="form-control" placeholder="Email" name="email" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,3}$" title="the format should be 'anything@domain.com'"
+                                        id="loginid" type="text" autocomplete="off" />
+                                </div>
+                                <div class="form-group has-feedback">
+                                    <!----- password -------------->
+                                    <input class="form-control" placeholder="Password" name="password" pattern="[a-zA-Z0-9@.]{6,}$" title="password should contain atleast 6 characters"
+                                        id="loginpsw" type="password" autocomplete="off" />
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <input type="submit" value="Sign In" class="btn btn-green btn-block btn-flat">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--/ Modal box-->
+    <!--Modal box-->
+    <div class="modal fade" id="register" role="dialog">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title text-center form-title">Register</h4>
+                </div>
+                <div class="modal-body padtrbl">
+                    <div class="login-box-body" id="reg-body">
+                        <p class="login-box-msg">Please Register to continue</p>
+                        <div class="form-group">
+                            <form name="" id="registerForm">
+                                <div class="form-group has-feedback">
+                                    <!----- email -------------->
+                                    <input class="form-control" placeholder="Email" name="email" id="emailid" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,3}$"
+                                        title="the format should be 'anything@domain.com'" type="text" autocomplete="off" />
+                                </div>
+                                <div class="form-group has-feedback">
+                                    <!----- username -------------->
+                                    <input class="form-control" placeholder="Username" name="username" id="username" type="text" autocomplete="off" pattern="[A-Za-z]{4,}"
+                                        title="username shoul contain atleast 4 letters" />
+                                </div>
+                                <div class="form-group has-feedback">
+                                    <!----- firstname -------------->
+                                    <input class="form-control" placeholder="Firstname" name="firstname" id="firstname" type="text" autocomplete="off" pattern="[A-Za-z]{4,}"
+                                        title="firstname shoul contain atleast 4 letters" />
+                                </div>
+                                <div class="form-group has-feedback">
+                                    <!----- lastname -------------->
+                                    <input class="form-control" placeholder="Lastname" name="lastname" id="lastname" type="text" autocomplete="off" pattern="[A-Za-z]{4,}"
+                                        title="lastname shoul contain atleast 4 letters" />
+                                </div>
+                                <div class="form-group has-feedback">
+                                    <!----- password -------------->
+                                    <input class="form-control" placeholder="Password" name="password" id="password" type="password" autocomplete="off" pattern="[A-Za-z0-9]{6,}"
+                                        title="password shoul contain atleast 4 letters" />
+                                </div>
+                                <div class="form-group has-feedback">
+                                    <!----- confirm password -------------->
+                                    <input class="form-control" placeholder="Confirm Password" name="confirm_password" id="logincfmpsw" type="password" autocomplete="off"
+                                        pattern="[A-Za-z0-9]{6,}" title="password shoul contain atleast 4 letters" />
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <input type="submit" value="Register" class="btn btn-green btn-block btn-flat">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--/ Modal box-->
+    <!--Banner-->
+    <div class="banner">
+        <div class="bg-color">
+            <div class="container">
+                <div class="row" id="errlogn">
+                    <div class="banner-text text-center">
+                        <div class="text-border">
+                            <h2 class="text-dec">Please Login</h2>
+                        </div>
+                        <div class="intro-para text-center">
+                            <p class="big-text">Note Your ToDo's Here and Don't Forget.</p>
+                            <p class="small-text">Checking items off a to-do list doesn’t determine progress; focusing on your priorities is whatcounts.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--/ Banner-->
+    <!--work-shop-->
+    <section id="work-shop" class="section-padding">
+        <div class="container">
+            <div class="row">
+                <div id="header-section" class="header-section text-center">
+                </div>
+                <br>
+                <div id="row-main"></div>
+            </div>
+        </div>
+        <br>
+    </section>
+    <!--/ work-shop-->
+    <!--Footer-->
+    <footer id="footer" class="footer">
+        <div class="container text-center">
+            <ul class="social-links">
+                <li><a href="https://twitter.com/AkarshChinna" target="_blank"><i class="fa fa-twitter fa-fw"></i></a></li>
+                <li><a href="https://www.facebook.com/Akarshchinna" target="_blank"><i class="fa fa-facebook fa-fw"></i></a></li>
+                <li><a href="https://www.github.com/akarsh030" target="_blank"><i class="fa fa-github fa-fw"></i></a></li>
+                <li><a href="https://plus.google.com/+akarshabraham" target="_blank"><i class="fa fa-google-plus fa-fw"></i></a></li>
+                <li><a href="https://www.linkedin.com/in/akarshchinna" target="_blank"><i class="fa fa-linkedin fa-fw"></i></a></li>
+            </ul>
+            ©2017 ToDo List. All rights reserved
+            <div class="credits">
+                Designed by Akarsh Chinna.
+            </div>
+        </div>
+    </footer>
+    <!--/ Footer-->
+</body>
+
+</html>

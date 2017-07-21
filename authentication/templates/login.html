@@ -1,0 +1,265 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="http://ajax.microsoft.com/ajax/jquery.templates/beta1/jquery.tmpl.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+        <script>
+    var glbl
+    var itup
+    function list_disp(){
+        $.ajax({
+            type: "GET",
+            url: "/todo/lists/",
+            success: function(data){
+                $.get('{% static "lists.html" %}', function (htm) {
+                    $.tmpl(htm,data).prependTo(".maindiv")
+                });
+            },
+        });
+    }
+    function item_disp(key){
+        $.ajax({
+            type:"GET",
+            url:"http://127.0.0.1:8000/todo/list/"+key+"/",
+            success:function(data) {
+                $.get('{% static "items.html" %}', function (htm) {
+                    $.tmpl(htm,data).prependTo(".maindiv")
+                });
+            },
+        });
+    }
+$("document").ready(function(){
+    $(".maindiv").on('submit','#hell',function(e){
+        e.preventDefault()
+        var credentials={}
+        credentials['email']=$("#user").val()
+        credentials['password']=$("#pass").val()
+        $.ajax({
+            type:"POST",
+            url:"http://127.0.0.1:8000/accounts/auth-token/",
+            data:JSON.stringify(credentials),
+            success:function(auth) {
+                $.ajax({
+                    type: "GET",
+                    url: "http://127.0.0.1:8000/accounts/restricted/",
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader("Authorization", "JWT " + auth.token);
+                    },
+                    success: function(data){
+                        $(".maindiv").empty()
+                        list_disp()
+                        $("<button id='listnew'>New List</button>").prependTo(".maindiv")
+                        $("<button class='logout'>Log Out</button>").prependTo("body")
+                        $("<button class='home'>HOME</button>").prependTo("body")
+                    },
+                });
+            },
+            error:function(jqXHR){
+                console.log(jqXHR.status)
+                $(".maindiv").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Eroor!</strong> Wrong Credentials.</div>')
+            },
+            dataType: "json",
+            contentType: "application/json",
+        });
+    });
+    $("body").on("click","button[class='home']",function(){
+        $(".maindiv").empty()
+        list_disp()
+        $("<button id='listnew'>New List</button>").prependTo(".maindiv")
+    });
+    $("body").on("click","button[class='logout']",function(){
+        $.ajax({
+            type: "GET",
+            url: "http://127.0.0.1:8000/accounts/logout/",
+            success: function(data){
+                $(location).attr('href','http://127.0.0.1:8000/accounts/login/');
+            },
+        });
+    });
+    $(".maindiv").on("click","button[id='listnew']",function(){
+        $.get('{% static "listnew.html" %}', function (htm) {
+            $(".maindiv").empty()
+            $.tmpl(htm).prependTo(".maindiv")
+        });
+    });
+    $(".maindiv").on("click","button[id='itemnew']",function(){
+        $.get('{% static "itemnew.html" %}', function (htm) {
+            $(".maindiv").empty()
+            $.tmpl(htm).prependTo(".maindiv")
+        });
+    });
+    $(".maindiv").on("submit",".lisup",function(e){
+        e.preventDefault()
+        var credentials={}
+        credentials['name']=$("#name").val()
+        $.ajax({
+            type:"PUT",
+            url:"http://127.0.0.1:8000/todo/listup/"+glbl[2]+"/",
+            data:credentials,
+            success:function(data) {
+                $(".maindiv").empty()
+                list_disp()
+                $(".maindiv").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Success!</strong> The List has been Successfully Updated.</div>')
+                $("<button id='listnew'>New List</button>").prependTo(".maindiv")
+            },
+            error:function(){
+                $(".maindiv").empty()
+                list_disp()
+                $(".maindiv").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> This List cannot be Updated.</div>')    
+                $("<button id='listnew'>New List</button>").prependTo(".maindiv")
+            }
+        });
+    });
+    $(".maindiv").on("submit",".itmup",function(e){
+        e.preventDefault()
+        var credentials={}
+        credentials['descrip']=$("#descrip").val()
+        credentials['due_by']=$("#due_by").val()
+        credentials['list']=itup
+        $.ajax({
+            type:"PUT",
+            url:"http://127.0.0.1:8000/todo/itemup/"+glbl[2]+"/",
+            data:credentials,
+            success:function(data) {
+                $(".maindiv").empty()
+                item_disp(itup)
+                $(".maindiv").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Success!</strong> The Item has been Successfully Updated.</div>')
+                $("<button id='itemnew'>New Item</button>").prependTo(".maindiv")
+            },
+            error:function(){
+                $(".maindiv").empty()
+                item_disp(itup)
+                $(".maindiv").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> This Item cannot be Updated.</div>')    
+                $("<button id='itemnew'>New Item</button>").prependTo(".maindiv")
+            }
+        });
+    });
+    $(".maindiv").on("submit",".lisnw",function(e){
+        e.preventDefault()
+        var credentials={}
+        credentials['name']=$("#name").val()
+        $.ajax({
+            type:"POST",
+            url:"http://127.0.0.1:8000/todo/newlist/",
+            data:credentials,
+            success:function(data) {
+                $(".maindiv").empty()
+                list_disp()
+                $("<button id='listnew'>New List</button>").prependTo(".maindiv")
+            },
+        });
+    });
+    $(".maindiv").on("submit",".itmnw",function(e){
+        e.preventDefault()
+        var credentials={}
+        credentials['descrip']=$("#descrip").val()
+        credentials['due_by']=$("#due_by").val()
+        $.ajax({
+            type:"POST",
+            url:"http://127.0.0.1:8000/todo/newitem/"+itup+"/",
+            data:credentials,
+            success:function(data) {
+                $(".maindiv").empty()
+                item_disp(itup)
+                $("<button id='itemnew'>New Item</button>").prependTo(".maindiv")
+            },
+        });
+    });
+    $(".maindiv").on("click","button[name='btnn']",function(){
+        var choice = $(this).attr('id');
+        var akar=choice.split('_');
+        glbl=akar
+        if(akar[0]=='list'){
+            itup=akar[2]
+            if(akar[1]=='show'){
+                $(".maindiv").empty()
+                item_disp(akar[2])
+                $("<button id='itemnew'>New Item</button>").prependTo(".maindiv")
+            }
+            else if(akar[1]=='update'){
+                $.ajax({
+                    type:"GET",
+                    url:"http://127.0.0.1:8000/todo/listup/"+akar[2]+"/",
+                    success:function(data) {
+                        $.get('{% static "listup.html" %}', function (htm) {
+                            $(".maindiv").empty()
+                            $.tmpl(htm,data).prependTo(".maindiv")
+                        });
+                    },
+                });
+            }
+            else if(akar[1]=='delete'){
+                $.ajax({
+                    type:"DELETE",
+                    url:"http://127.0.0.1:8000/todo/listup/"+akar[2]+"/",
+                    success:function(data) {
+                        $(".maindiv").empty()
+                        list_disp()
+                        $(".maindiv").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Success!</strong> The List has been Successfully Removed.</div>')
+                        $("<button id='listnew'>New List</button>").prependTo(".maindiv")
+                    },
+                    error:function(){
+                        $(".maindiv").empty()
+                        list_disp()
+                        $(".maindiv").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> This List cannot be Removed.</div>')    
+                        $("<button id='listnew'>New List</button>").prependTo(".maindiv") 
+                    }
+                });
+            }
+        }
+        else if(akar[0]=='item'){
+            if(akar[1]=='update'){
+                $.ajax({
+                    type:"GET",
+                    url:"http://127.0.0.1:8000/todo/itemup/"+akar[2]+"/",
+                    success:function(data) {
+                        $.get('{% static "itemup.html" %}', function (htm) {
+                            $(".maindiv").empty()
+                            $.tmpl(htm,data).prependTo(".maindiv")
+                        });
+                    },
+                });
+            }
+            else if(akar[1]=='delete'){
+                $.ajax({
+                    type:"DELETE",
+                    url:"http://127.0.0.1:8000/todo/itemup/"+akar[2]+"/",
+                    success:function(data) {
+                        $(".maindiv").empty()
+                        item_disp(itup)
+                        $(".maindiv").prepend('<div class="alert alert-success alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Success!</strong> The Item has been Successfully Removed.</div>')
+                        $("<button id='itemnew'>New Item</button>").prependTo(".maindiv")
+                    },
+                    error:function(){
+                        $(".maindiv").empty()
+                        item_disp(itup)
+                        $(".maindiv").prepend('<div class="alert alert-error alert-dismissable"><a href="#" class="close" data-dismiss="alert" aria-label="close">×</a><strong>Error!</strong> This Item cannot be Removed.</div>')    
+                        $("<button id='itemnew'>New Item</button>").prependTo(".maindiv")
+                    }
+                });
+            }
+        }
+    });
+});
+</script>
+</head>
+<body>
+    <div class="maindiv">
+    <form action="POST" id="hell">
+        Username:<br>
+        <input id="user" type="text" name="name">
+        <br>
+        Password:<br>
+        <input id="pass" type="password" name="password">
+        <br>
+        <input type="submit" name="Submit">
+    </form>
+    </div>
+</body>
+</html>
